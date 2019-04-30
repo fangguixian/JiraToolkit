@@ -137,11 +137,11 @@ var CONTENT_SCRIPT = (function () {
                 if (!workload) {
                     data[user.key].no_workload_count++;
                 } else {
-                    data[user.key].workload_total += parseFloat(workload);
+                    data[user.key].workload_total = CONTENT_SCRIPT.float_add(data[user.key].workload_total, workload);
                     if (item.fields.fixVersions.length <= 0) {
-                        data[user.key].workload_common += parseFloat(workload);
+                        data[user.key].workload_common = CONTENT_SCRIPT.float_add(data[user.key].workload_common, workload);
                     } else {
-                        data[user.key].workload_main += parseFloat(workload);
+                        data[user.key].workload_main = CONTENT_SCRIPT.float_add(data[user.key].workload_main, workload);
                     }
                 }
             };
@@ -269,6 +269,22 @@ var CONTENT_SCRIPT = (function () {
                 statistical_workload_config.active = false;
             });
             $('#jira_toolkit__statistical_workload button.dialog-menu-item:first').click();
+        },
+        // 浮点相加
+        float_add: function (arg1, arg2) {
+            var r1, r2, m;
+            try {
+                r1 = arg1.toString().split(".")[1].length
+            } catch (e) {
+                r1 = 0
+            }
+            try {
+                r2 = arg2.toString().split(".")[1].length
+            } catch (e) {
+                r2 = 0
+            }
+            m = Math.pow(10, Math.max(r1, r2));
+            return (parseFloat(arg1) * m + parseFloat(arg2) * m) / m;
         }
     };
 })();
