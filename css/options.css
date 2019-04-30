@@ -1,0 +1,39 @@
+body{
+    font-size:14px;
+    font-family:"Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background:#f5f5f5;
+    padding:20px;
+}
+h1{
+    font-size:30px;
+    font-weight:normal;
+}
+h2{
+    font-size:14px;
+    margin:0;
+}
+button{
+    padding:5px 10px;
+}
+table{
+    font-size:14px;
+}
+table td{
+    padding:20px 10px 20px 10px;
+    border-top:#dddddd solid 1px;
+    vertical-align:top;
+}
+#container{
+    display:block;
+}
+#logo{
+    vertical-align:middle;
+    margin-right:15px;
+    width:48px;
+}
+.comment{
+    font-size:12px;
+    font-style:italic;
+    color:#666;
+    line-height:18px;
+}

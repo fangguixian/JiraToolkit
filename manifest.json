@@ -1,0 +1,63 @@
+{
+    // 清单文件的版本，这个必须写，而且必须是2
+    "manifest_version": 2,
+    // 插件的名称
+    "name": "jira toolkit",
+    // 插件描述
+    "description": "jira toolkit",
+    // 插件的版本
+    "version": "1.0.0",
+    // 插件的图标
+    "icons": {
+        "16": "img/icon.png",
+        "48": "img/icon.png",
+        "128": "img/icon.png"
+    },
+    // 插件主页
+    "homepage_url": "https://github.com/fangguixian",
+    // 权限申请
+    "permissions": [
+        "tabs",
+        "storage",
+        "contextMenus",
+        "declarativeContent"
+    ],
+    // 会一直常驻的后台JS或后台页面
+    "background": {
+        "scripts": [
+            "js/background.js"
+        ]
+    },
+    // 当某些特定页面打开才显示的图标
+    "page_action": {
+        "default_icon": "img/icon.png",
+        "default_title": "jira toolkit",
+        "default_popup": "popup.html"
+    },
+    // 需要直接注入页面的JS
+    "content_scripts": [
+        {
+            // 匹配的地址
+            "matches": [
+                "http://jira.51zxtx.com/*"
+            ],
+            // 多个JS按顺序注入
+            "js": [
+                "js/jquery-1.12.4.min.js",
+                "js/content-script.js"
+            ],
+            // JS的注入可以随便一点，但是CSS的注意就要千万小心了，因为一不小心就可能影响全局样式
+            "css": [
+                "css/custom.css"
+            ],
+            // 代码注入的时间，可选值： "document_start", "document_end", or "document_idle"，最后一个表示页面空闲时，默认document_idle
+            "run_at": "document_start"
+        }
+    ],
+    // 插件配置页（Chrome40以前）
+    "options_page": "options.html",
+    // 插件配置页（Chrome40以后，如果2个都写新版Chrome只认后面这一个）
+    "options_ui": {
+        "page": "options.html"
+    }
+}
