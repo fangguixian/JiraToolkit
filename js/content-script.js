@@ -270,7 +270,7 @@ var CONTENT_SCRIPT = (function () {
             var html =
                 '<div id="jira_toolkit__statistical_workload_aui_blanket" class="aui-blanket" aria-hidden="false"></div>' +
                 '<div id="jira_toolkit__statistical_workload" class="jira-dialog box-shadow jira-dialog-open popup-width-large jira-dialog-content-ready">' +
-                '    <div class="jira-dialog-heading"><h2 title="工作量详情">工作量详情</h2></div>' +
+                '    <div class="jira-dialog-heading"><h2 title="统计工作量">统计工作量</h2></div>' +
                 '    <div class="jira-dialog-content">' +
                 '        <div class="aui-group">' +
                 '            <div class="aui-item dialog-menu-group">' +
