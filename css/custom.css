@@ -1,3 +1,4 @@
+/* 统计工作量 */
 #jira_toolkit__statistical_workload{
     width:810px;
     margin-left:-406px;
@@ -39,4 +40,8 @@
 }
 #jira_toolkit__statistical_workload .dialog-pane{
     padding-left:0;
+}
+/* 合计工作量 */
+#issuetable tr.jira_toolkit__workload_sum{
+    background:#f5f5f5;
 }

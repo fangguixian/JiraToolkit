@@ -19,6 +19,9 @@
     "permissions": [
         "tabs",
         "storage",
+        "webRequest",
+        "webRequestBlocking",
+        "http://jira.51zxtx.com/*",
         "contextMenus",
         "declarativeContent"
     ],

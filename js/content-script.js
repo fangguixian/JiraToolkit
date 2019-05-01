@@ -17,6 +17,8 @@ var CONTENT_SCRIPT = (function () {
                     };
                 } else if (receive.cmd === 'statistical_workload') {
                     CONTENT_SCRIPT.statistical_workload();
+                } else if (receive.cmd === 'show_workload_sum') {
+                    setTimeout(CONTENT_SCRIPT.show_workload_sum, 1);
                 }
             }
 
@@ -297,19 +299,62 @@ var CONTENT_SCRIPT = (function () {
         },
         // 浮点相加
         float_add: function (arg1, arg2) {
-            var r1, r2, m;
-            try {
-                r1 = arg1.toString().split(".")[1].length
-            } catch (e) {
-                r1 = 0
+            arg1 = parseFloat(arg1);
+            arg2 = parseFloat(arg2);
+            var multiple = Math.pow(10, 10);
+            return Math.round(arg1 * multiple + arg2 * multiple) / multiple;
+        },
+        // 显示工作量合计
+        show_workload_sum: function () {
+            // 列表页面才执行
+            var issue_table = $('#issuetable');
+            if (issue_table.length <= 0) return;
+            // 移除原有的html
+            issue_table.find('tbody .jira_toolkit__workload_sum').remove();
+            // 需要展示合计值的列
+            var field_list_sum = [
+                'customfield_10400', // 确认预估消耗
+                'customfield_10314', // 确认实际消耗
+                'customfield_10401', // 设计预估消耗
+                'customfield_10315', // 设计实际消耗
+                'customfield_10402', // 排期预估消耗
+                'customfield_10325', // 排期实际消耗
+                'customfield_10318', // 开发预估消耗
+                'customfield_10403', // 开发实际消耗
+                'customfield_10319', // 测试预估消耗
+                'customfield_10404', // 测试实际消耗
+                'customfield_10405', // 验收预估消耗
+                'customfield_10406', // 验收实际消耗
+                'customfield_10407', // 发布预估消耗
+                'customfield_10409', // 发布实际消耗
+                'customfield_10309' // 子任务预估消耗
+            ];
+            // 组装html
+            var row_html = '<tr class="issuerow jira_toolkit__workload_sum">';
+            var has_sum = false;
+            $.each(issue_table.find('.rowHeader th'), function (idx, th) {
+                var field_name = $(th).attr('data-id');
+                if ($.inArray(field_name, field_list_sum) !== -1) {
+                    var sum = 0;
+                    $.each(issue_table.find('tbody td.' + field_name), function (index, td) {
+                        var value = $.trim($(td).text());
+                        if (value) {
+                            sum = CONTENT_SCRIPT.float_add(sum, value);
+                        }
+                    });
+
+                    row_html += '<td>' + sum + '</td>';
+                    has_sum = true;
+                } else {
+                    row_html += '<td>&nbsp;</td>';
+                }
+            });
+            row_html += '</tr>';
+            // 插入html到页面
+            if (has_sum) {
+                issue_table.find('tbody').append(row_html);
+                issue_table.find('tbody').prepend(row_html);
             }
-            try {
-                r2 = arg2.toString().split(".")[1].length
-            } catch (e) {
-                r2 = 0
-            }
-            m = Math.pow(10, Math.max(r1, r2));
-            return (parseFloat(arg1) * m + parseFloat(arg2) * m) / m;
         }
     };
 })();
