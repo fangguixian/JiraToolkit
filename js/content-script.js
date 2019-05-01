@@ -16,7 +16,7 @@ var CONTENT_SCRIPT = (function () {
                 } else if (receive.cmd === 'statistical_workload') {
                     CONTENT_SCRIPT.statistical_workload();
                 } else if (receive.cmd === 'show_workload_sum') {
-                    setTimeout(CONTENT_SCRIPT.show_workload_sum, 1);
+                    CONTENT_SCRIPT.show_workload_sum();
                 } else if (receive.cmd === 'refresh_table') {
                     $('.refresh-table')[0].click();
                 }
@@ -115,8 +115,8 @@ var CONTENT_SCRIPT = (function () {
             var set_item_default_data = function (user) {
                 if (!user) {
                     user = {
-                        key: 'undistributed',
-                        displayName: '未分配'
+                        key: 'EMPTY',
+                        displayName: '<span style="color:red">未分配</span>'
                     };
                 }
                 if (!data.hasOwnProperty(user.key)) {
@@ -152,8 +152,8 @@ var CONTENT_SCRIPT = (function () {
             var update_item_data = function (user, workload, item) {
                 if (!user) {
                     user = {
-                        key: 'undistributed',
-                        displayName: '未分配'
+                        key: 'EMPTY',
+                        displayName: '<span style="color:red">未分配</span>'
                     };
                 }
                 if (!workload) {
@@ -305,10 +305,20 @@ var CONTENT_SCRIPT = (function () {
             return Math.round(arg1 * multiple + arg2 * multiple) / multiple;
         },
         // 显示工作量合计
-        show_workload_sum: function () {
-            // 列表页面才执行
+        show_workload_sum: function (count) {
+            // 在列表页面且DOM加载完毕才执行
             var issue_table = $('#issuetable');
-            if (issue_table.length <= 0) return;
+            if (issue_table.length <= 0) {
+                if (count) {
+                    count++;
+                } else {
+                    count = 0;
+                }
+                if (count > 200) return;
+                setTimeout(function () {
+                    CONTENT_SCRIPT.show_workload_sum(count);
+                }, 10);
+            }
             // 移除原有的html
             issue_table.find('tbody .jira_toolkit__workload_sum').remove();
             // 需要展示合计值的列
