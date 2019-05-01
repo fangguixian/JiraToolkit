@@ -2,9 +2,9 @@
     // 清单文件的版本，这个必须写，而且必须是2
     "manifest_version": 2,
     // 插件的名称
-    "name": "jira toolkit",
+    "name": "Jira工具箱",
     // 插件描述
-    "description": "jira toolkit",
+    "description": "Jira工具箱",
     // 插件的版本
     "version": "1.0.0",
     // 插件的图标
@@ -31,7 +31,7 @@
     // 当某些特定页面打开才显示的图标
     "page_action": {
         "default_icon": "img/icon.png",
-        "default_title": "jira toolkit",
+        "default_title": "Jira工具箱",
         "default_popup": "popup.html"
     },
     // 需要直接注入页面的JS
