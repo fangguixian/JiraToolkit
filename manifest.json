@@ -14,7 +14,7 @@
         "128": "img/icon.png"
     },
     // 插件主页
-    "homepage_url": "https://github.com/fangguixian",
+    "homepage_url": "https://github.com/fangguixian/JiraToolkit",
     // 权限申请
     "permissions": [
         "tabs",
