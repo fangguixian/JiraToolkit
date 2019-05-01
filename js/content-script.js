@@ -12,13 +12,13 @@ var CONTENT_SCRIPT = (function () {
 
             if (receive.cmd) {
                 if (receive.cmd === 'check_items') {
-                    reply = {
-                        enable_statistical_workload: !statistical_workload_config.active
-                    };
+                    reply = {enable_statistical_workload: !statistical_workload_config.active};
                 } else if (receive.cmd === 'statistical_workload') {
                     CONTENT_SCRIPT.statistical_workload();
                 } else if (receive.cmd === 'show_workload_sum') {
                     setTimeout(CONTENT_SCRIPT.show_workload_sum, 1);
+                } else if (receive.cmd === 'refresh_table') {
+                    $('.refresh-table')[0].click();
                 }
             }
 

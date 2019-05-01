@@ -5,6 +5,8 @@ var POPUP = (function () {
             POPUP.check_items();
             $('#statistical_workload').on('click', POPUP.statistical_workload);
             $('#options').on('click', POPUP.open_options_page);
+            $('#enable_workload_sum').on('click', POPUP.enable_workload_sum);
+            $('#disable_workload_sum').on('click', POPUP.disable_workload_sum);
         },
         // 向content-script发送消息
         send_msg_to_content_script: function (message, callback) {
@@ -27,6 +29,15 @@ var POPUP = (function () {
                     $('#statistical_workload').addClass('disabled');
                 }
             });
+            chrome.storage.sync.get('enable_workload_sum', function (data) {
+                if (data && data.enable_workload_sum === 'Yes') {
+                    $('#disable_workload_sum').show();
+                    $('#enable_workload_sum').hide();
+                } else {
+                    $('#enable_workload_sum').show();
+                    $('#disable_workload_sum').hide();
+                }
+            });
         },
         // 统计工作量
         statistical_workload: function () {
@@ -38,6 +49,20 @@ var POPUP = (function () {
         // 打开配置页面
         open_options_page: function () {
             chrome.tabs.create({url: 'options.html'})
+        },
+        // 开启工作量合计
+        enable_workload_sum: function () {
+            chrome.storage.sync.set({enable_workload_sum: 'Yes'});
+            POPUP.send_msg_to_content_script({cmd: 'refresh_table'}, function (response) {
+            });
+            window.close();
+        },
+        // 关闭工作量合计
+        disable_workload_sum: function () {
+            chrome.storage.sync.set({enable_workload_sum: 'No'});
+            POPUP.send_msg_to_content_script({cmd: 'refresh_table'}, function (response) {
+            });
+            window.close();
         }
     };
 })();
