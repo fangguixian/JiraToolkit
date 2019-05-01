@@ -4,7 +4,6 @@
     <title>jira toolkit options</title>
     <link rel="stylesheet" href="css/options.css"/>
     <script src="js/jquery-1.12.4.min.js"></script>
-    <script src="js/options.js"></script>
 </head>
 <body>
 <div id="container">
@@ -20,15 +19,15 @@
             </td>
             <td>
                 <p>
-                    <input type="radio" id="enable_sum_yes" name="enable_sum" value="Yes" disabled>
-                    <label for="enable_sum_yes">是</label>
+                    <input type="radio" id="enable_workload_sum_yes" name="enable_workload_sum" value="Yes">
+                    <label for="enable_workload_sum_yes">是</label>
                     <br>
-                    <input type="radio" id="enable_sum_no" name="enable_sum" value="No" disabled checked>
-                    <label for="enable_sum_no">否</label>
+                    <input type="radio" id="enable_workload_sum_no" name="enable_workload_sum" value="No">
+                    <label for="enable_workload_sum_no">否</label>
                 </p>
                 <p>
                     <span class="comment" style="">
-                        开启该选项后，在工单列表表体和表头之间会增加一行，展示数值列的合计值。
+                        开启该选项后，在工单列表的顶部和底部会分别增加一行，展示工作量列的合计值。
                     </span>
                 </p>
             </td>
@@ -40,6 +39,8 @@
     <br>
     <button id="apply">应用</button>
     <button id="save_and_close">保存并关闭</button>
+    <span class="message"></span>
 </div>
+<script src="js/options.js"></script>
 </body>
 </html>

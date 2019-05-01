@@ -37,3 +37,13 @@ table td{
     color:#666;
     line-height:18px;
 }
+.message{
+    margin-left:10px;
+    font-weight:bolder;
+}
+.error{
+    color:red;
+}
+.success{
+    color:green;
+}
