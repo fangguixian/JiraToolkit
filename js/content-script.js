@@ -308,7 +308,9 @@ var CONTENT_SCRIPT = (function () {
         show_workload_sum: function (count) {
             // 在列表页面且DOM加载完毕才执行
             var issue_table = $('#issuetable');
-            if (issue_table.length <= 0) {
+            var results_count_total = $('.results-count-total');
+            if (issue_table.length <= 0 || results_count_total.length <= 0 ||
+                parseInt($(results_count_total[0]).text()) < issue_table.find('tbody tr').length) {
                 if (count) {
                     count++;
                 } else {
