@@ -109,6 +109,7 @@ var CONTENT_SCRIPT = (function () {
         // 统计开发工作量-处理数据
         statistical_workload__data_process: function (issues) {
             var data = {};
+            // 设置每一项的默认数据格式
             var set_item_default_data = function (user) {
                 if (!user) {
                     user = {
@@ -120,13 +121,32 @@ var CONTENT_SCRIPT = (function () {
                     data[user.key] = {
                         key: user.key,
                         display_name: user.displayName,
-                        no_workload_count: 0,
-                        workload_total: 0,
-                        workload_main: 0,
-                        workload_common: 0
+                        no_workload_count: {value: 0, issues: []},
+                        workload_total: {value: 0, issues: []},
+                        workload_main: {value: 0, issues: []},
+                        workload_common: {value: 0, issues: []}
                     };
                 }
             };
+            // 数据更新 指定字段
+            var update_item_data_field = function (user, workload, item, field_name) {
+                var field_val = data[user.key][field_name];
+                if ($.inArray(item.key, field_val.issues) === -1) {
+                    switch (field_name) {
+                        case 'no_workload_count':
+                            field_val.value++;
+                            field_val.issues.push(item.key);
+                            break;
+                        case 'workload_total':
+                        case 'workload_main':
+                        case 'workload_common':
+                            field_val.value = CONTENT_SCRIPT.float_add(field_val.value, workload);
+                            field_val.issues.push(item.key);
+                            break;
+                    }
+                }
+            };
+            // 数据更新
             var update_item_data = function (user, workload, item) {
                 if (!user) {
                     user = {
@@ -135,13 +155,13 @@ var CONTENT_SCRIPT = (function () {
                     };
                 }
                 if (!workload) {
-                    data[user.key].no_workload_count++;
+                    update_item_data_field(user, workload, item, 'no_workload_count');
                 } else {
-                    data[user.key].workload_total = CONTENT_SCRIPT.float_add(data[user.key].workload_total, workload);
+                    update_item_data_field(user, workload, item, 'workload_total');
                     if (item.fields.fixVersions.length <= 0) {
-                        data[user.key].workload_common = CONTENT_SCRIPT.float_add(data[user.key].workload_common, workload);
+                        update_item_data_field(user, workload, item, 'workload_common');
                     } else {
-                        data[user.key].workload_main = CONTENT_SCRIPT.float_add(data[user.key].workload_main, workload);
+                        update_item_data_field(user, workload, item, 'workload_main');
                     }
                 }
             };
@@ -214,20 +234,20 @@ var CONTENT_SCRIPT = (function () {
                     '            <div class="action-description">所有未完成工单的工作量情况</div>' +
                     '            <div class="issue-link-oauth-toggle only-local-server">' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.no_workload_count + '</span> 个</span>' +
+                    '                    <span class="field-value"><span>' + val.no_workload_count.value + '</span> 个</span>' +
                     '                    <label>无工作量工单数：</label>' +
                     '                    <div class="description">&nbsp;</div>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.workload_total + '</span> 人天</span>' +
+                    '                    <span class="field-value"><span>' + val.workload_total.value + '</span> 人天</span>' +
                     '                    <label>总工作量：</label>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.workload_main + '</span> 人天</span>' +
+                    '                    <span class="field-value"><span>' + val.workload_main.value + '</span> 人天</span>' +
                     '                    <label>主版本工作量：</label>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.workload_common + '</span> 人天</span>' +
+                    '                    <span class="field-value"><span>' + val.workload_common.value + '</span> 人天</span>' +
                     '                    <label>日常工作量：</label>' +
                     '                </div>' +
                     '            </div>' +
