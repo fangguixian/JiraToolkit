@@ -226,6 +226,11 @@ var CONTENT_SCRIPT = (function () {
             var dialog_menu = '',
                 dialog_pane = '';
             $.each(data, function (key, val) {
+                var no_workload_count_link = 'http://jira.51zxtx.com/issues/?jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%0A)%20%0AORDER%20BY%20status%20DESC';
+                var workload_total_link = 'http://jira.51zxtx.com/issues/?jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%0A)%20%0AORDER%20BY%20status%20DESC';
+                var workload_main_link = 'http://jira.51zxtx.com/issues/?jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%0A)%20%0AAND%20fixVersion%20IS%20NOT%20EMPTY%0AORDER%20BY%20status%20DESC';
+                var workload_common_link = 'http://jira.51zxtx.com/issues/?jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%0A)%20%0AAND%20fixVersion%20IS%20EMPTY%0AORDER%20BY%20status%20DESC';
+
                 dialog_menu += '<li><button data-key="' + key + '" class="dialog-menu-item">' + val.display_name + '</button></li>';
                 dialog_pane +=
                     '<div data-key="' + key + '" class="aui-item dialog-pane hidden">' +
@@ -234,20 +239,20 @@ var CONTENT_SCRIPT = (function () {
                     '            <div class="action-description">所有未完成工单的工作量情况</div>' +
                     '            <div class="issue-link-oauth-toggle only-local-server">' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.no_workload_count.value + '</span> 个</span>' +
+                    '                    <span class="field-value"><a target="_blank" href="' + no_workload_count_link + '">' + val.no_workload_count.value + '</a> 个</span>' +
                     '                    <label>无工作量工单数：</label>' +
                     '                    <div class="description">&nbsp;</div>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.workload_total.value + '</span> 人天</span>' +
+                    '                    <span class="field-value"><a target="_blank" href="' + workload_total_link + '">' + val.workload_total.value + '</a> 人天</span>' +
                     '                    <label>总工作量：</label>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.workload_main.value + '</span> 人天</span>' +
+                    '                    <span class="field-value"><a target="_blank" href="' + workload_main_link + '">' + val.workload_main.value + '</a> 人天</span>' +
                     '                    <label>主版本工作量：</label>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><span>' + val.workload_common.value + '</span> 人天</span>' +
+                    '                    <span class="field-value"><a target="_blank" href="' + workload_common_link + '">' + val.workload_common.value + '</a> 人天</span>' +
                     '                    <label>日常工作量：</label>' +
                     '                </div>' +
                     '            </div>' +

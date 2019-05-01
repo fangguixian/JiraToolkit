@@ -18,9 +18,10 @@
     margin-left:10px;
     font-weight:normal;
 }
-#jira_toolkit__statistical_workload .field-group .field-value span{
-    color:#707070;
+#jira_toolkit__statistical_workload .field-group .field-value a{
+    color:#3b73af;
     font-weight:bold;
+    text-decoration:underline;
 }
 #jira_toolkit__statistical_workload .field-group label{
     width:150px;
