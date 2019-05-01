@@ -13,7 +13,7 @@ var POPUP = (function () {
                     console.log('request', message);
                     chrome.tabs.sendMessage(tabs[0].id, message, function (response) {
                         console.log('response', response);
-                        if (callback) callback(response);
+                        callback(response);
                     });
                 }
             })

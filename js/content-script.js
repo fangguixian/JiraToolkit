@@ -8,7 +8,7 @@ var CONTENT_SCRIPT = (function () {
         // 接收来自后台的消息
         on_message_listener: function (receive, sender, sendResponse) {
             console.log('receive', receive);
-            var reply = null;
+            var reply = 'received';
 
             if (receive.cmd) {
                 if (receive.cmd === 'check_items') {
@@ -22,7 +22,7 @@ var CONTENT_SCRIPT = (function () {
                 }
             }
 
-            if (reply) sendResponse(reply);
+            sendResponse(reply);
             console.log('reply', reply);
         },
         // 查询JIRA工单（由于JIRA有条数限制，本函数会递归查询所有分页数据后再callback）

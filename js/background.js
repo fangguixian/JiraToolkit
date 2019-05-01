@@ -23,7 +23,7 @@ var BACK_GROUND = (function () {
                     console.log('request', message);
                     chrome.tabs.sendMessage(tabs[0].id, message, function (response) {
                         console.log('response', response);
-                        if (callback) callback(response);
+                        callback(response);
                     });
                 }
             })
@@ -35,7 +35,8 @@ var BACK_GROUND = (function () {
                     details.url.indexOf("http://jira.51zxtx.com/issues/") !== -1) {
                     chrome.storage.sync.get('enable_workload_sum', function (data) {
                         if (data && data.enable_workload_sum === 'Yes') {
-                            BACK_GROUND.send_msg_to_content_script({cmd: 'show_workload_sum'});
+                            BACK_GROUND.send_msg_to_content_script({cmd: 'show_workload_sum'}, function (response) {
+                            });
                         }
                     });
                 }
