@@ -42,11 +42,6 @@ li:hover {
     float: left;
     overflow: hidden;
 }
-.left img {
-    position: absolute;
-    margin-top: 4px;
-    left: 8px;
-}
 .right {
     color: #A1A192;
     float: right;
