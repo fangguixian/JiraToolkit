@@ -39,7 +39,7 @@ var POPUP = (function () {
                 }
             });
         },
-        // 统计工作量
+        // 统计未完成工作量
         statistical_workload: function () {
             if ($('#statistical_workload').hasClass('disabled')) return;
             POPUP.send_msg_to_content_script({cmd: 'statistical_workload'}, function (response) {

@@ -8,7 +8,7 @@ var OPTIONS = (function () {
         },
         // 初始化数据
         init_data: function () {
-            // 开启合计
+            // 开启工作量合计
             chrome.storage.sync.get(['enable_workload_sum'], function (data) {
                 if (data && data.enable_workload_sum === 'Yes') {
                     $('#enable_workload_sum_yes').click();
@@ -19,7 +19,7 @@ var OPTIONS = (function () {
         },
         // 应用
         apply: function () {
-            // 开启合计
+            // 开启工作量合计
             var enable_workload_sum = $('[name=enable_workload_sum]:checked').val();
             if (enable_workload_sum) chrome.storage.sync.set({enable_workload_sum: enable_workload_sum});
 
