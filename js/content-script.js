@@ -26,7 +26,7 @@ var CONTENT_SCRIPT = (function () {
             console.log('reply', reply);
         },
         // 查询JIRA工单（由于JIRA有条数限制，本函数会递归查询所有分页数据后再callback）
-        statistical_workload__jira_search: function (params, callback) {
+        jira_search: function (params, callback) {
             var jql = params.jql || '';
             var fields = params.fields || '';
             var start = params.start || 0;
@@ -57,7 +57,7 @@ var CONTENT_SCRIPT = (function () {
                     }
 
                     if (temp_issues.length < data.total) {
-                        CONTENT_SCRIPT.statistical_workload__jira_search({
+                        CONTENT_SCRIPT.jira_search({
                             jql: jql,
                             fields: fields,
                             start: temp_issues.length
@@ -68,8 +68,8 @@ var CONTENT_SCRIPT = (function () {
                 }
             });
         },
-        // 统计开发工作量-显示加载界面
-        statistical_workload__show_loading: function () {
+        // 显示加载界面
+        show_loading: function () {
             $("#jira_toolkit__aui_blanket").remove();
             $("#jira_toolkit__loading_background").remove();
             $("#jira_toolkit__loading_indicator").remove();
@@ -80,8 +80,8 @@ var CONTENT_SCRIPT = (function () {
             `;
             $('body').append(html);
         },
-        // 统计开发工作量-隐藏加载界面
-        statistical_workload__hide_loading: function () {
+        // 隐藏加载界面
+        hide_loading: function () {
             $("#jira_toolkit__aui_blanket").remove();
             $("#jira_toolkit__loading_background").remove();
             $("#jira_toolkit__loading_indicator").remove();
@@ -89,11 +89,11 @@ var CONTENT_SCRIPT = (function () {
         // 统计开发工作量
         statistical_workload: function () {
             // 显示加载界面
-            CONTENT_SCRIPT.statistical_workload__show_loading();
+            CONTENT_SCRIPT.show_loading();
             // 更新状态
             statistical_workload_config.active = true;
             // 查询数据
-            CONTENT_SCRIPT.statistical_workload__jira_search(
+            CONTENT_SCRIPT.jira_search(
                 {
                     jql: "issuetype in standardIssueTypes() AND status in (确认中, 设计中, 排期中, 待开发, 开发中, 待测试, 测试中, 待验收, 验收中, 待发布, 发布中)",
                     fields: "customfield_10327,customfield_10400,customfield_10328,customfield_10401,customfield_10329,customfield_10402,customfield_10330,customfield_10318,customfield_10331,customfield_10319,customfield_10332,customfield_10405,customfield_10333,customfield_10407,status,fixVersions"
@@ -104,7 +104,7 @@ var CONTENT_SCRIPT = (function () {
                     // 展示数据
                     CONTENT_SCRIPT.statistical_workload__data_show(data);
                     // 隐藏加载界面
-                    CONTENT_SCRIPT.statistical_workload__hide_loading();
+                    CONTENT_SCRIPT.hide_loading();
                 }
             );
         },
