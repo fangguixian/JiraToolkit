@@ -1,5 +1,5 @@
 var CONTENT_SCRIPT = (function () {
-    var temp_issues = [], is_log = true,
+    var temp_issues = [], is_log = false,
         statistical_workload_config = {active: false},
         statistical_overdue_config = {active: false};
     return {
@@ -128,8 +128,8 @@ var CONTENT_SCRIPT = (function () {
         // 统计未完成工作量-处理数据
         statistical_workload__data_process: function (issues) {
             var data = {};
-            // 设置每一项的默认数据格式
-            var set_item_default_data = function (user) {
+            // 设置用户的默认数据
+            var set_user_default_data = function (user) {
                 if (!user) {
                     user = {
                         key: 'EMPTY',
@@ -138,147 +138,270 @@ var CONTENT_SCRIPT = (function () {
                 }
                 if (!data.hasOwnProperty(user.key)) {
                     data[user.key] = {
-                        key: user.key,
-                        display_name: user.displayName,
-                        no_workload_count: {value: 0, issues: []},
-                        workload_total: {value: 0, issues: []},
-                        workload_main: {value: 0, issues: []},
-                        workload_common: {value: 0, issues: []}
+                        // 用户信息
+                        user_info: {
+                            key: user.key,
+                            display_name: user.displayName,
+                        },
+                        // 没有设置工作量的工单
+                        no_workload: [],
+                        // 有设置工作量的工单
+                        have_workload: {
+                            // 所有阶段
+                            total: {
+                                workload: 0,
+                                count: 0,
+                                lists: {
+                                    // 'TEST-1': ['develop', 'test']
+                                }
+                            },
+                            // 确认阶段
+                            confirm: {workload: 0, lists: []},
+                            // 设计阶段
+                            design: {workload: 0, lists: []},
+                            // 排期阶段
+                            schedule: {workload: 0, lists: []},
+                            // 开发阶段
+                            develop: {
+                                // 总工作量
+                                total: {workload: 0, lists: []},
+                                // 主版本
+                                main: {workload: 0, lists: []},
+                                // 日常
+                                common: {workload: 0, lists: []}
+                            },
+                            // 测试阶段
+                            test: {
+                                // 总工作量
+                                total: {workload: 0, lists: []},
+                                // 主版本
+                                main: {workload: 0, lists: []},
+                                // 日常
+                                common: {workload: 0, lists: []}
+                            },
+                            // 验收阶段
+                            check: {
+                                // 总工作量
+                                total: {workload: 0, lists: []},
+                                // 主版本
+                                main: {workload: 0, lists: []},
+                                // 日常
+                                common: {workload: 0, lists: []}
+                            },
+                            // 发布阶段
+                            release: {
+                                // 总工作量
+                                total: {workload: 0, lists: []},
+                                // 主版本
+                                main: {workload: 0, lists: []},
+                                // 日常
+                                common: {workload: 0, lists: []}
+                            }
+                        }
                     };
                 }
             };
-            // 数据更新 指定字段
-            var update_item_data_field = function (user, workload, item, field_name) {
-                var field_val = data[user.key][field_name];
-                if ($.inArray(item.key, field_val.issues) === -1) {
-                    switch (field_name) {
-                        case 'no_workload_count':
-                            field_val.value++;
-                            field_val.issues.push(item.key);
-                            break;
-                        case 'workload_total':
-                        case 'workload_main':
-                        case 'workload_common':
-                            field_val.value = CONTENT_SCRIPT.float_add(field_val.value, workload);
-                            field_val.issues.push(item.key);
-                            break;
-                    }
-                }
-            };
-            // 数据更新
-            var update_item_data = function (user, workload, item) {
+            // 更新用户数据
+            var update_user_data = function (user, workload, stage, issue) {
                 if (!user) {
                     user = {
                         key: 'EMPTY',
                         displayName: '<span style="color:red">未分配</span>'
                     };
                 }
+                var user_data = data[user.key];
+
                 if (!workload) {
-                    update_item_data_field(user, workload, item, 'no_workload_count');
+                    if ($.inArray(issue.key, user_data.no_workload) === -1) {
+                        user_data.no_workload.push(issue.key);
+                    }
                 } else {
-                    update_item_data_field(user, workload, item, 'workload_total');
-                    if (item.fields.fixVersions.length <= 0) {
-                        update_item_data_field(user, workload, item, 'workload_common');
+                    var have_workload = user_data.have_workload;
+
+                    have_workload.total.workload = CONTENT_SCRIPT.float_add(have_workload.total.workload, workload);
+                    if (!have_workload.total.lists.hasOwnProperty(issue.key)) {
+                        have_workload.total.count++;
+                        have_workload.total.lists[issue.key] = [stage];
                     } else {
-                        update_item_data_field(user, workload, item, 'workload_main');
+                        have_workload.total.lists[issue.key].push(stage);
+                    }
+
+                    switch (stage) {
+                        case 'confirm':
+                        case 'design':
+                        case 'schedule':
+                            have_workload[stage].workload = CONTENT_SCRIPT.float_add(have_workload[stage].workload, workload);
+                            have_workload[stage].lists.push(issue.key);
+                            break;
+                        case 'develop':
+                        case 'test':
+                        case 'check':
+                        case 'release':
+                            have_workload[stage].total.workload = CONTENT_SCRIPT.float_add(have_workload[stage].total.workload, workload);
+                            have_workload[stage].total.lists.push(issue.key);
+                            if (issue.fields.fixVersions.length <= 0) {
+                                have_workload[stage].common.workload = CONTENT_SCRIPT.float_add(have_workload[stage].common.workload, workload);
+                                have_workload[stage].common.lists.push(issue.key);
+                            } else {
+                                have_workload[stage].main.workload = CONTENT_SCRIPT.float_add(have_workload[stage].main.workload, workload);
+                                have_workload[stage].main.lists.push(issue.key);
+                            }
+                            break;
                     }
                 }
             };
-
-            $.each(issues, function (idx, item) {
+            // 循环处理
+            $.each(issues, function (idx, issue) {
                 var user, workload;
                 // 工单确认（单一组负责）
-                if ($.inArray(item.fields.status.name, ['确认中']) !== -1) {
-                    user = item.fields.customfield_10327; // 确认负责人
-                    workload = item.fields.customfield_10400; // 确认预估消耗
-                    set_item_default_data(user);
-                    update_item_data(user, workload, item);
+                if ($.inArray(issue.fields.status.name, ['确认中']) !== -1) {
+                    user = issue.fields.customfield_10327; // 确认负责人
+                    workload = issue.fields.customfield_10400; // 确认预估消耗
+                    set_user_default_data(user);
+                    update_user_data(user, workload, 'confirm', issue);
                 }
                 // 方案设计（单一组负责，各组长参与）
-                if ($.inArray(item.fields.status.name, ['设计中']) !== -1) {
-                    user = item.fields.customfield_10328; // 设计负责人
-                    workload = item.fields.customfield_10401; // 设计预估消耗
-                    set_item_default_data(user);
-                    update_item_data(user, workload, item);
+                if ($.inArray(issue.fields.status.name, ['设计中']) !== -1) {
+                    user = issue.fields.customfield_10328; // 设计负责人
+                    workload = issue.fields.customfield_10401; // 设计预估消耗
+                    set_user_default_data(user);
+                    update_user_data(user, workload, 'design', issue);
                 }
                 // 版本排期（各组长参与）
-                if ($.inArray(item.fields.status.name, ['排期中']) !== -1) {
+                if ($.inArray(issue.fields.status.name, ['排期中']) !== -1) {
                     // user = item.fields.customfield_10329; // 排期负责人
                     // workload = item.fields.customfield_10402; // 排期预估消耗
-                    // set_item_default_data(user);
-                    // update_item_data(user, workload, item);
+                    // set_user_default_data(user);
+                    // update_user_data(user, workload, 'schedule', issue);
                 }
                 // 项目开发（单一组负责）
-                if ($.inArray(item.fields.status.name, ['待开发', '开发中']) !== -1) {
-                    user = item.fields.customfield_10330; // 开发负责人
-                    workload = item.fields.customfield_10318; // 开发预估消耗
-                    set_item_default_data(user);
-                    update_item_data(user, workload, item);
+                if ($.inArray(issue.fields.status.name, ['待开发', '开发中']) !== -1) {
+                    user = issue.fields.customfield_10330; // 开发负责人
+                    workload = issue.fields.customfield_10318; // 开发预估消耗
+                    set_user_default_data(user);
+                    update_user_data(user, workload, 'develop', issue);
                 }
                 // 内部测试（单一组负责）
-                if ($.inArray(item.fields.status.name, ['待开发', '开发中', '待测试', '测试中']) !== -1) {
-                    user = item.fields.customfield_10331; // 测试负责人
-                    workload = item.fields.customfield_10319; // 测试预估消耗
-                    set_item_default_data(user);
-                    update_item_data(user, workload, item);
+                if ($.inArray(issue.fields.status.name, ['待开发', '开发中', '待测试', '测试中']) !== -1) {
+                    user = issue.fields.customfield_10331; // 测试负责人
+                    workload = issue.fields.customfield_10319; // 测试预估消耗
+                    set_user_default_data(user);
+                    update_user_data(user, workload, 'test', issue);
                 }
                 // 用户验收（单一组负责，工作量少可忽略）
-                if ($.inArray(item.fields.status.name, ['待开发', '开发中', '待测试', '测试中', '待验收', '验收中']) !== -1) {
+                if ($.inArray(issue.fields.status.name, ['待开发', '开发中', '待测试', '测试中', '待验收', '验收中']) !== -1) {
                     // user = item.fields.customfield_10332; // 验收负责人
                     // workload = item.fields.customfield_10405; // 验收预估消耗
-                    // set_item_default_data(user);
-                    // update_item_data(user, workload, item);
+                    // set_user_default_data(user);
+                    // update_user_data(user, workload, 'check', issue);
                 }
                 // 版本发布（单一组负责，工作量少可忽略）
-                if ($.inArray(item.fields.status.name, ['待开发', '开发中', '待测试', '测试中', '待验收', '验收中', '待发布', '发布中']) !== -1) {
+                if ($.inArray(issue.fields.status.name, ['待开发', '开发中', '待测试', '测试中', '待验收', '验收中', '待发布', '发布中']) !== -1) {
                     // user = item.fields.customfield_10333; // 验收负责人
                     // workload = item.fields.customfield_10407; // 验收预估消耗
-                    // set_item_default_data(user);
-                    // update_item_data(user, workload, item);
+                    // set_user_default_data(user);
+                    // update_user_data(user, workload, 'release', issue);
                 }
             });
 
+            if (is_log) console.log('statistical_workload_data', data);
             return data;
         },
         // 统计未完成工作量-展示数据
         statistical_workload__data_show: function (data) {
             var dialog_menu = '',
                 dialog_pane = '';
-            $.each(data, function (key, val) {
-                var no_workload_count_link = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY)%0A)%20%0AORDER%20BY%20status%20DESC';
-                var workload_total_link = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%0A)%20%0AORDER%20BY%20status%20DESC';
-                var workload_main_link = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%0A)%20%0AAND%20fixVersion%20IS%20NOT%20EMPTY%0AORDER%20BY%20status%20DESC';
-                var workload_common_link = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20%0A(%0A%20%20%20%20(status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%20OR%20%0A%20%20%20%20(status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY)%0A)%20%0AAND%20fixVersion%20IS%20EMPTY%0AORDER%20BY%20status%20DESC';
+            $.each(data, function (user_key, user_data) {
+                var link_no_workload = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%0A)%20ORDER%20BY%20status%20DESC';
+                var link_total = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%0A)%20ORDER%20BY%20status%20DESC';
+                var link_confirm = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20%0A)%20ORDER%20BY%20status%20DESC';
+                var link_design = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20%0A)%20ORDER%20BY%20status%20DESC';
+                var link_develop = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20%0A)%20ORDER%20BY%20status%20DESC';
+                var link_develop_main = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20AND%20%0A%20%20%20%20fixVersion%20IS%20NOT%20EMPTY%0A)%20ORDER%20BY%20status%20DESC';
+                var link_develop_common = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20AND%20%0A%20%20%20%20fixVersion%20IS%20EMPTY%0A)%20ORDER%20BY%20status%20DESC';
+                var link_test = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%0A)%20ORDER%20BY%20status%20DESC';
+                var link_test_main = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20AND%20%0A%20%20%20%20fixVersion%20IS%20NOT%20EMPTY%0A)%20ORDER%20BY%20status%20DESC';
+                var link_test_common = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3Dweihuimin%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20AND%20%0A%20%20%20%20fixVersion%20IS%20EMPTY%0A)%20ORDER%20BY%20status%20DESC';
 
-                dialog_menu += '<li><button data-key="' + key + '" class="dialog-menu-item">' + val.display_name + '</button></li>';
+                dialog_menu += '<li><button data-key="' + user_key + '" class="dialog-menu-item">' + user_data.user_info.display_name + '</button></li>';
                 dialog_pane +=
-                    '<div data-key="' + key + '" class="aui-item dialog-pane hidden">' +
+                    '<div data-key="' + user_key + '" class="aui-item dialog-pane hidden">' +
                     '    <form class="aui">' +
                     '        <div class="form-body">' +
-                    '            <div class="action-description">所有未完成工单的工作量情况</div>' +
                     '            <div class="issue-link-oauth-toggle only-local-server">' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><a target="_blank" href="' + no_workload_count_link + '">' + val.no_workload_count.value + '</a> 个</span>' +
-                    '                    <label>无工作量工单数：</label>' +
+                    '                    <span class="field-value">' +
+                    '                        <span><a target="_blank" href="' + link_no_workload + '">' + user_data.no_workload.length + '</a> 个</span>' +
+                    '                    </span>' +
+                    '                    <label>未设置工作量工单数：</label>' +
+                    '                </div>' +
+                    '                <div class="field-group">' +
+                    '                    <span class="field-value">' +
+                    '                        <span><a target="_blank" href="' + link_total + '">' + user_data.have_workload.total.workload + '</a> 人天</span>' +
+                    '                    </span>' +
+                    '                    <label>所有阶段工作量总数：</label>' +
                     '                    <div class="description">&nbsp;</div>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><a target="_blank" href="' + workload_total_link + '">' + val.workload_total.value + '</a> 人天</span>' +
-                    '                    <label>总工作量：</label>' +
+                    '                    <span class="field-value">' +
+                    '                        <span><a target="_blank" href="' + link_confirm + '">' + user_data.have_workload.confirm.workload + '</a> 人天</span>' +
+                    '                    </span>' +
+                    '                    <label>工单确认阶段：</label>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><a target="_blank" href="' + workload_main_link + '">' + val.workload_main.value + '</a> 人天</span>' +
-                    '                    <label>主版本工作量：</label>' +
+                    '                    <span class="field-value">' +
+                    '                        <span><a target="_blank" href="' + link_design + '">' + user_data.have_workload.design.workload + '</a> 人天</span>' +
+                    '                    </span>' +
+                    '                    <label>方案设计阶段：</label>' +
                     '                </div>' +
                     '                <div class="field-group">' +
-                    '                    <span class="field-value"><a target="_blank" href="' + workload_common_link + '">' + val.workload_common.value + '</a> 人天</span>' +
-                    '                    <label>日常工作量：</label>' +
+                    '                    <span class="field-value">' +
+                    '                        <span>' + user_data.have_workload.schedule.workload + ' 人天</span>' +
+                    '                    </span>' +
+                    '                    <label>版本排期阶段：</label>' +
+                    '                </div>' +
+                    '                <div class="field-group">' +
+                    '                    <span class="field-value">' +
+                    '                        <span class="jira-toolkit-w80">' +
+                    '                            <a target="_blank" href="' + link_develop + '">' + user_data.have_workload.develop.total.workload + '</a> 人天' +
+                    '                        </span>（主版本' +
+                    '                        <a target="_blank" href="' + link_develop_main + '">' + user_data.have_workload.develop.main.workload + '</a>人天 日常 ' +
+                    '                        <a target="_blank" href="' + link_develop_common + '">' + user_data.have_workload.develop.common.workload + '</a>人天）' +
+                    '                    </span>' +
+                    '                    <label>项目开发阶段：</label>' +
+                    '                </div>' +
+                    '                <div class="field-group">' +
+                    '                    <span class="field-value">' +
+                    '                        <span class="jira-toolkit-w80">' +
+                    '                            <a target="_blank" href="' + link_test + '">' + user_data.have_workload.test.total.workload + '</a> 人天' +
+                    '                        </span>（主版本' +
+                    '                        <a target="_blank" href="' + link_test_main + '">' + user_data.have_workload.test.main.workload + '</a>人天 日常 ' +
+                    '                        <a target="_blank" href="' + link_test_common + '">' + user_data.have_workload.test.common.workload + '</a>人天）' +
+                    '                    </span>' +
+                    '                    <label>内部测试阶段：</label>' +
+                    '                </div>' +
+                    '                <div class="field-group">' +
+                    '                    <span class="field-value">' +
+                    '                        <span class="jira-toolkit-w80">' + user_data.have_workload.check.total.workload + ' 人天</span>（主版本' +
+                    '                        ' + user_data.have_workload.check.main.workload + '人天 日常 ' +
+                    '                        ' + user_data.have_workload.check.common.workload + '人天）' +
+                    '                    </span>' +
+                    '                    <label>用户验收阶段：</label>' +
+                    '                </div>' +
+                    '                <div class="field-group">' +
+                    '                    <span class="field-value">' +
+                    '                        <span class="jira-toolkit-w80">' + user_data.have_workload.release.total.workload + ' 人天</span>（主版本' +
+                    '                        ' + user_data.have_workload.release.main.workload + '人天 日常 ' +
+                    '                        ' + user_data.have_workload.release.common.workload + '人天）' +
+                    '                    </span>' +
+                    '                    <label>版本发布阶段：</label>' +
                     '                </div>' +
                     '            </div>' +
                     '        </div>' +
                     '        <div class="buttons-container form-footer">' +
                     '            <div class="buttons">' +
                     '                <span class="icon throbber"></span>' +
+                    '                <a class="aui-button aui-button-link refresh" href="#">刷新</a>' +
                     '                <a class="aui-button aui-button-link cancel" href="#">关闭</a>' +
                     '            </div>' +
                     '        </div>' +
@@ -311,6 +434,10 @@ var CONTENT_SCRIPT = (function () {
                 $("#jira_toolkit__statistical_workload_aui_blanket").remove();
                 $("#jira_toolkit__statistical_workload").remove();
                 statistical_workload_config.active = false;
+            });
+            $('#jira_toolkit__statistical_workload a.refresh').on('click', function () {
+                $('#jira_toolkit__statistical_workload a.cancel').click();
+                CONTENT_SCRIPT.statistical_workload();
             });
             $('#jira_toolkit__statistical_workload button.dialog-menu-item:first').click();
         },
@@ -446,7 +573,7 @@ var CONTENT_SCRIPT = (function () {
                             develop: {
                                 // 所有工单
                                 total: [],
-                                // 主板本工单
+                                // 主版本工单
                                 main: [],
                                 // 日常工单
                                 common: []
@@ -455,7 +582,7 @@ var CONTENT_SCRIPT = (function () {
                             test: {
                                 // 所有工单
                                 total: [],
-                                // 主板本工单
+                                // 主版本工单
                                 main: [],
                                 // 日常工单
                                 common: []
@@ -464,7 +591,7 @@ var CONTENT_SCRIPT = (function () {
                             check: {
                                 // 所有工单
                                 total: [],
-                                // 主板本工单
+                                // 主版本工单
                                 main: [],
                                 // 日常工单
                                 common: []
@@ -473,7 +600,7 @@ var CONTENT_SCRIPT = (function () {
                             release: {
                                 // 所有工单
                                 total: [],
-                                // 主板本工单
+                                // 主版本工单
                                 main: [],
                                 // 日常工单
                                 common: []
@@ -650,7 +777,7 @@ var CONTENT_SCRIPT = (function () {
                     '                </div>' +
                     '                <div class="field-group">' +
                     '                    <span class="field-value">' +
-                    '                        <span class="jira-toolkit-w20">' +
+                    '                        <span class="jira-toolkit-w50">' +
                     '                            <a target="_blank" href="' + link_develop + '">' + user_data.have_deadline.develop.total.length + '</a> 个' +
                     '                        </span>（主版本' +
                     '                        <a target="_blank" href="' + link_develop_main + '">' + user_data.have_deadline.develop.main.length + '</a>个 日常 ' +
@@ -660,7 +787,7 @@ var CONTENT_SCRIPT = (function () {
                     '                </div>' +
                     '                <div class="field-group">' +
                     '                    <span class="field-value">' +
-                    '                        <span class="jira-toolkit-w20">' +
+                    '                        <span class="jira-toolkit-w50">' +
                     '                            <a target="_blank" href="' + link_test + '">' + user_data.have_deadline.test.total.length + '</a> 个' +
                     '                        </span>（主版本' +
                     '                        <a target="_blank" href="' + link_test_main + '">' + user_data.have_deadline.test.main.length + '</a>个 日常 ' +
@@ -670,7 +797,7 @@ var CONTENT_SCRIPT = (function () {
                     '                </div>' +
                     '                <div class="field-group">' +
                     '                    <span class="field-value">' +
-                    '                        <span class="jira-toolkit-w20">' +
+                    '                        <span class="jira-toolkit-w50">' +
                     '                            <a target="_blank" href="' + link_check + '">' + user_data.have_deadline.check.total.length + '</a> 个' +
                     '                        </span>（主版本' +
                     '                        <a target="_blank" href="' + link_check_main + '">' + user_data.have_deadline.check.main.length + '</a>个 日常 ' +
@@ -680,7 +807,7 @@ var CONTENT_SCRIPT = (function () {
                     '                </div>' +
                     '                <div class="field-group">' +
                     '                    <span class="field-value">' +
-                    '                        <span class="jira-toolkit-w20">' +
+                    '                        <span class="jira-toolkit-w50">' +
                     '                            <a target="_blank" href="' + link_release + '">' + user_data.have_deadline.release.total.length + '</a> 个' +
                     '                        </span>（主版本' +
                     '                        <a target="_blank" href="' + link_release_main + '">' + user_data.have_deadline.release.main.length + '</a>个 日常 ' +

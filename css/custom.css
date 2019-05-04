@@ -13,6 +13,17 @@
 }
 #jira_toolkit__statistical_workload form .form-body{
     max-height:556px;
+    padding-bottom:28px;
+}
+#jira_toolkit__statistical_workload .field-group{
+    padding-top:2px;
+    padding-bottom:2px;
+}
+#jira_toolkit__statistical_workload .field-group label{
+    width:150px;
+}
+#jira_toolkit__statistical_workload .field-group div.description{
+    line-height:12px;
 }
 #jira_toolkit__statistical_workload .field-group .field-value{
     color:#707070;
@@ -24,9 +35,6 @@
     font-weight:bold;
     text-decoration:underline;
 }
-#jira_toolkit__statistical_workload .field-group label{
-    width:150px;
-}
 #jira_toolkit__statistical_workload .form-footer{
     height:50px;
     position:absolute;
@@ -34,12 +42,15 @@
     right:0;
     left:0;
 }
-#jira_toolkit__statistical_workload .issue-link-oauth-toggle{
-    border-top:1px solid #DDD;
-    padding-top:8px;
-}
 #jira_toolkit__statistical_workload .dialog-pane{
     padding-left:0;
+}
+#jira_toolkit__statistical_workload .issue-link-oauth-toggle{
+    padding-top:5px;
+}
+#jira_toolkit__statistical_workload .jira-toolkit-w80{
+    display:inline-block;
+    width:80px;
 }
 /* 合计工作量 */
 #issuetable tr.jira_toolkit__workload_sum{
@@ -95,7 +106,7 @@
 #jira_toolkit__statistical_overdue .issue-link-oauth-toggle{
     padding-top:5px;
 }
-#jira_toolkit__statistical_overdue .jira-toolkit-w20{
+#jira_toolkit__statistical_overdue .jira-toolkit-w50{
     display:inline-block;
     width:50px;
 }
