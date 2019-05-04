@@ -693,6 +693,7 @@ var CONTENT_SCRIPT = (function () {
                     '        <div class="buttons-container form-footer">' +
                     '            <div class="buttons">' +
                     '                <span class="icon throbber"></span>' +
+                    '                <a class="aui-button aui-button-link refresh" href="#">刷新</a>' +
                     '                <a class="aui-button aui-button-link cancel" href="#">关闭</a>' +
                     '            </div>' +
                     '        </div>' +
@@ -725,6 +726,10 @@ var CONTENT_SCRIPT = (function () {
                 $("#jira_toolkit__statistical_overdue_aui_blanket").remove();
                 $("#jira_toolkit__statistical_overdue").remove();
                 statistical_overdue_config.active = false;
+            });
+            $('#jira_toolkit__statistical_overdue a.refresh').on('click', function () {
+                $('#jira_toolkit__statistical_overdue a.cancel').click();
+                CONTENT_SCRIPT.statistical_overdue();
             });
             $('#jira_toolkit__statistical_overdue button.dialog-menu-item:first').click();
         }
