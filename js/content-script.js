@@ -7,6 +7,10 @@ var CONTENT_SCRIPT = (function () {
         init: function () {
             chrome.runtime.onMessage.addListener(CONTENT_SCRIPT.on_message_listener);
         },
+        // 设置是否打印日志
+        set_log_flag: function (flag) {
+            is_log = flag;
+        },
         // 接收来自后台的消息
         on_message_listener: function (receive, sender, sendResponse) {
             if (is_log) console.log('receive', receive);
@@ -373,10 +377,6 @@ var CONTENT_SCRIPT = (function () {
                 issue_table.find('tbody').append(row_html);
                 issue_table.find('tbody').prepend(row_html);
             }
-        },
-        // 设置是否打印日志
-        set_log_flag: function (flag) {
-            is_log = flag;
         },
         // 统计逾期工单
         statistical_overdue: function () {
