@@ -7,6 +7,7 @@ var POPUP = (function () {
             $('#options').on('click', POPUP.open_options_page);
             $('#enable_workload_sum').on('click', POPUP.enable_workload_sum);
             $('#disable_workload_sum').on('click', POPUP.disable_workload_sum);
+            $('#statistical_overdue').on('click', POPUP.statistical_overdue);
         },
         // 向content-script发送消息
         send_msg_to_content_script: function (message, callback) {
@@ -27,6 +28,11 @@ var POPUP = (function () {
                     $('#statistical_workload').removeClass('disabled');
                 } else {
                     $('#statistical_workload').addClass('disabled');
+                }
+                if (response.enable_statistical_overdue) {
+                    $('#statistical_overdue').removeClass('disabled');
+                } else {
+                    $('#statistical_overdue').addClass('disabled');
                 }
             });
             chrome.storage.sync.get('enable_workload_sum', function (data) {
@@ -63,6 +69,13 @@ var POPUP = (function () {
             POPUP.send_msg_to_content_script({cmd: 'refresh_table'}, function (response) {
             });
             window.close();
+        },
+        // 统计逾期工单
+        statistical_overdue: function () {
+            if ($('#statistical_overdue').hasClass('disabled')) return;
+            POPUP.send_msg_to_content_script({cmd: 'statistical_overdue'}, function (response) {
+                window.close();
+            });
         }
     };
 })();
