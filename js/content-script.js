@@ -1,5 +1,7 @@
 var CONTENT_SCRIPT = (function () {
-    var temp_issues = [], statistical_workload_config = {active: false};
+    var temp_issues = [],
+        statistical_workload_config = {active: false},
+        statistical_overdue_config = {active: false};
     return {
         // 初始化
         init: function () {
@@ -12,13 +14,18 @@ var CONTENT_SCRIPT = (function () {
 
             if (receive.cmd) {
                 if (receive.cmd === 'check_items') {
-                    reply = {enable_statistical_workload: !statistical_workload_config.active};
+                    reply = {
+                        enable_statistical_workload: !statistical_workload_config.active && !statistical_overdue_config.active,
+                        enable_statistical_overdue: !statistical_workload_config.active && !statistical_overdue_config.active
+                    };
                 } else if (receive.cmd === 'statistical_workload') {
                     CONTENT_SCRIPT.statistical_workload();
                 } else if (receive.cmd === 'show_workload_sum') {
                     CONTENT_SCRIPT.show_workload_sum();
                 } else if (receive.cmd === 'refresh_table') {
                     $('.refresh-table')[0].click();
+                } else if (receive.cmd === 'statistical_overdue') {
+                    CONTENT_SCRIPT.statistical_overdue();
                 }
             }
 
@@ -73,11 +80,10 @@ var CONTENT_SCRIPT = (function () {
             $("#jira_toolkit__aui_blanket").remove();
             $("#jira_toolkit__loading_background").remove();
             $("#jira_toolkit__loading_indicator").remove();
-            var html = `
-                <div id="jira_toolkit__aui_blanket" class="aui-blanket" aria-hidden="false"></div>
-                <div id="jira_toolkit__loading_background"  class="jira-page-loading-background" aria-hidden="false"></div>
-                <div id="jira_toolkit__loading_indicator"  class="jira-page-loading-indicator" aria-hidden="false"></div>
-            `;
+            var html =
+                '<div id="jira_toolkit__aui_blanket" class="aui-blanket" aria-hidden="false"></div>' +
+                '<div id="jira_toolkit__loading_background"  class="jira-page-loading-background" aria-hidden="false"></div>' +
+                '<div id="jira_toolkit__loading_indicator"  class="jira-page-loading-indicator" aria-hidden="false"></div>';
             $('body').append(html);
         },
         // 隐藏加载界面
@@ -86,7 +92,7 @@ var CONTENT_SCRIPT = (function () {
             $("#jira_toolkit__loading_background").remove();
             $("#jira_toolkit__loading_indicator").remove();
         },
-        // 统计开发工作量
+        // 统计未完成工作量
         statistical_workload: function () {
             // 显示加载界面
             CONTENT_SCRIPT.show_loading();
@@ -108,7 +114,7 @@ var CONTENT_SCRIPT = (function () {
                 }
             );
         },
-        // 统计开发工作量-处理数据
+        // 统计未完成工作量-处理数据
         statistical_workload__data_process: function (issues) {
             var data = {};
             // 设置每一项的默认数据格式
@@ -223,7 +229,7 @@ var CONTENT_SCRIPT = (function () {
 
             return data;
         },
-        // 统计开发工作量-展示数据
+        // 统计未完成工作量-展示数据
         statistical_workload__data_show: function (data) {
             var dialog_menu = '',
                 dialog_pane = '';
