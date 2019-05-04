@@ -45,3 +45,57 @@
 #issuetable tr.jira_toolkit__workload_sum{
     background:#f5f5f5;
 }
+/* 统计逾期工单 */
+#jira_toolkit__statistical_overdue{
+    width:810px;
+    margin-left:-406px;
+    margin-top:-260.5px;
+}
+#jira_toolkit__statistical_overdue .jira-dialog-content{
+    margin-bottom:50px;
+}
+#jira_toolkit__statistical_overdue form{
+    overflow:auto;
+    position:static;
+}
+#jira_toolkit__statistical_overdue form .form-body{
+    max-height:556px;
+    padding-bottom:28px;
+}
+#jira_toolkit__statistical_overdue .field-group{
+    padding-top:2px;
+    padding-bottom:2px;
+}
+#jira_toolkit__statistical_overdue .field-group label{
+    width:150px;
+}
+#jira_toolkit__statistical_overdue .field-group div.description{
+    line-height:12px;
+}
+#jira_toolkit__statistical_overdue .field-group .field-value{
+    color:#707070;
+    margin-left:10px;
+    font-weight:normal;
+}
+#jira_toolkit__statistical_overdue .field-group .field-value a{
+    color:#3b73af;
+    font-weight:bold;
+    text-decoration:underline;
+}
+#jira_toolkit__statistical_overdue .form-footer{
+    height:50px;
+    position:absolute;
+    bottom:0;
+    right:0;
+    left:0;
+}
+#jira_toolkit__statistical_overdue .dialog-pane{
+    padding-left:0;
+}
+#jira_toolkit__statistical_overdue .issue-link-oauth-toggle{
+    padding-top:5px;
+}
+#jira_toolkit__statistical_overdue .jira-toolkit-w20{
+    display:inline-block;
+    width:50px;
+}
