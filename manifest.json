@@ -6,7 +6,7 @@
     // 插件描述
     "description": "Jira工具箱",
     // 插件的版本
-    "version": "1.0.0",
+    "version": "1.1.0",
     // 插件的图标
     "icons": {
         "16": "img/icon.png",
