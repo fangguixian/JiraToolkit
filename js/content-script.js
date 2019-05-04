@@ -11,6 +11,13 @@ var CONTENT_SCRIPT = (function () {
         set_log_flag: function (flag) {
             is_log = flag;
         },
+        // 浮点相加
+        float_add: function (arg1, arg2) {
+            arg1 = parseFloat(arg1);
+            arg2 = parseFloat(arg2);
+            var multiple = Math.pow(10, 10);
+            return Math.round(arg1 * multiple + arg2 * multiple) / multiple;
+        },
         // 接收来自后台的消息
         on_message_listener: function (receive, sender, sendResponse) {
             if (is_log) console.log('receive', receive);
@@ -306,13 +313,6 @@ var CONTENT_SCRIPT = (function () {
                 statistical_workload_config.active = false;
             });
             $('#jira_toolkit__statistical_workload button.dialog-menu-item:first').click();
-        },
-        // 浮点相加
-        float_add: function (arg1, arg2) {
-            arg1 = parseFloat(arg1);
-            arg2 = parseFloat(arg2);
-            var multiple = Math.pow(10, 10);
-            return Math.round(arg1 * multiple + arg2 * multiple) / multiple;
         },
         // 显示工作量合计
         show_workload_sum: function (count) {
