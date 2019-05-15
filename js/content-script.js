@@ -211,7 +211,7 @@ var CONTENT_SCRIPT = (function () {
                 }
                 var user_data = data[user.key];
 
-                if (!workload) {
+                if (!workload && workload !== 0) {
                     if ($.inArray(issue.key, user_data.no_workload) === -1) {
                         user_data.no_workload.push(issue.key);
                     }
