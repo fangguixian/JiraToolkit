@@ -18,6 +18,27 @@ var CONTENT_SCRIPT = (function () {
             var multiple = Math.pow(10, 10);
             return Math.round(arg1 * multiple + arg2 * multiple) / multiple;
         },
+        // 获取本月第一天时间戳
+        get_first_day_time: function () {
+            var date = new Date();
+            date.setDate(1);
+            date.setHours(0);
+            date.setMinutes(0);
+            date.setSeconds(0);
+            date.setMilliseconds(0);
+            return date.getTime();
+        },
+        // 获取本月最后一天时间戳
+        get_last_day_time: function () {
+            var date = new Date();
+            date.setMonth(date.getMonth() + 1);
+            date.setDate(1);
+            date.setHours(0);
+            date.setMinutes(0);
+            date.setSeconds(0);
+            date.setMilliseconds(0);
+            return date.getTime() - 1;
+        },
         // 接收来自后台的消息
         on_message_listener: function (receive, sender, sendResponse) {
             if (is_log) console.log('receive', receive);
@@ -113,7 +134,9 @@ var CONTENT_SCRIPT = (function () {
             CONTENT_SCRIPT.jira_search(
                 {
                     jql: "issuetype in standardIssueTypes() AND status in (确认中, 设计中, 排期中, 待开发, 开发中, 待测试, 测试中, 待验收, 验收中, 待发布, 发布中)",
-                    fields: "customfield_10327,customfield_10400,customfield_10328,customfield_10401,customfield_10329,customfield_10402,customfield_10330,customfield_10318,customfield_10331,customfield_10319,customfield_10332,customfield_10405,customfield_10333,customfield_10407,status,fixVersions"
+                    fields: "customfield_10327,customfield_10400,customfield_10328,customfield_10401,customfield_10329,customfield_10402,customfield_10330,customfield_10318," +
+                        "customfield_10331,customfield_10319,customfield_10332,customfield_10405,customfield_10333,customfield_10407,status,fixVersions," +
+                        "customfield_10310,customfield_10312,customfield_10324,customfield_10316,customfield_10317,customfield_10326,customfield_10408"
                 },
                 function (issues) {
                     // 处理数据
@@ -153,6 +176,30 @@ var CONTENT_SCRIPT = (function () {
                                 count: 0,
                                 lists: {
                                     // 'TEST-1': ['develop', 'test']
+                                },
+                                // 上月
+                                last_month: {
+                                    workload: 0,
+                                    count: 0,
+                                    lists: {
+                                        // 'TEST-1': ['develop', 'test']
+                                    }
+                                },
+                                // 本月
+                                this_month: {
+                                    workload: 0,
+                                    count: 0,
+                                    lists: {
+                                        // 'TEST-1': ['develop', 'test']
+                                    }
+                                },
+                                // 下月
+                                nex_month: {
+                                    workload: 0,
+                                    count: 0,
+                                    lists: {
+                                        // 'TEST-1': ['develop', 'test']
+                                    }
                                 }
                             },
                             // 确认阶段
@@ -202,7 +249,7 @@ var CONTENT_SCRIPT = (function () {
                 }
             };
             // 更新用户数据
-            var update_user_data = function (user, workload, stage, issue) {
+            var update_user_data = function (user, workload, deadline, stage, issue) {
                 if (!user) {
                     user = {
                         key: 'EMPTY',
@@ -224,6 +271,34 @@ var CONTENT_SCRIPT = (function () {
                         have_workload.total.lists[issue.key] = [stage];
                     } else {
                         have_workload.total.lists[issue.key].push(stage);
+                    }
+
+                    var first_day_time = CONTENT_SCRIPT.get_first_day_time();
+                    var last_day_time = CONTENT_SCRIPT.get_last_day_time();
+                    if (new Date(deadline).getTime() < first_day_time) {
+                        have_workload.total.last_month.workload = CONTENT_SCRIPT.float_add(have_workload.total.last_month.workload, workload);
+                        if (!have_workload.total.last_month.lists.hasOwnProperty(issue.key)) {
+                            have_workload.total.last_month.count++;
+                            have_workload.total.last_month.lists[issue.key] = [stage];
+                        } else {
+                            have_workload.total.last_month.lists[issue.key].push(stage);
+                        }
+                    } else if (new Date(deadline).getTime() > last_day_time) {
+                        have_workload.total.nex_month.workload = CONTENT_SCRIPT.float_add(have_workload.total.nex_month.workload, workload);
+                        if (!have_workload.total.nex_month.lists.hasOwnProperty(issue.key)) {
+                            have_workload.total.nex_month.count++;
+                            have_workload.total.nex_month.lists[issue.key] = [stage];
+                        } else {
+                            have_workload.total.nex_month.lists[issue.key].push(stage);
+                        }
+                    } else {
+                        have_workload.total.this_month.workload = CONTENT_SCRIPT.float_add(have_workload.total.this_month.workload, workload);
+                        if (!have_workload.total.this_month.lists.hasOwnProperty(issue.key)) {
+                            have_workload.total.this_month.count++;
+                            have_workload.total.this_month.lists[issue.key] = [stage];
+                        } else {
+                            have_workload.total.this_month.lists[issue.key].push(stage);
+                        }
                     }
 
                     switch (stage) {
@@ -257,50 +332,57 @@ var CONTENT_SCRIPT = (function () {
                 if ($.inArray(issue.fields.status.name, ['确认中']) !== -1) {
                     user = issue.fields.customfield_10327; // 确认负责人
                     workload = issue.fields.customfield_10400; // 确认预估消耗
+                    deadline = issue.fields.customfield_10310; // 确认期限
                     set_user_default_data(user);
-                    update_user_data(user, workload, 'confirm', issue);
+                    update_user_data(user, workload, deadline, 'confirm', issue);
                 }
                 // 方案设计（单一组负责，各组长参与）
                 if ($.inArray(issue.fields.status.name, ['设计中']) !== -1) {
                     user = issue.fields.customfield_10328; // 设计负责人
                     workload = issue.fields.customfield_10401; // 设计预估消耗
+                    deadline = issue.fields.customfield_10312; // 设计期限
                     set_user_default_data(user);
-                    update_user_data(user, workload, 'design', issue);
+                    update_user_data(user, workload, deadline, 'design', issue);
                 }
                 // 版本排期（各组长参与）
                 if ($.inArray(issue.fields.status.name, ['排期中']) !== -1) {
                     // user = item.fields.customfield_10329; // 排期负责人
                     // workload = item.fields.customfield_10402; // 排期预估消耗
+                    // deadline = issue.fields.customfield_10324; // 排期期限
                     // set_user_default_data(user);
-                    // update_user_data(user, workload, 'schedule', issue);
+                    // update_user_data(user, workload, deadline, 'schedule', issue);
                 }
                 // 项目开发（单一组负责）
                 if ($.inArray(issue.fields.status.name, ['待开发', '开发中']) !== -1) {
                     user = issue.fields.customfield_10330; // 开发负责人
                     workload = issue.fields.customfield_10318; // 开发预估消耗
+                    deadline = issue.fields.customfield_10316; // 开发期限
                     set_user_default_data(user);
-                    update_user_data(user, workload, 'develop', issue);
+                    update_user_data(user, workload, deadline, 'develop', issue);
                 }
                 // 内部测试（单一组负责）
                 if ($.inArray(issue.fields.status.name, ['待开发', '开发中', '待测试', '测试中']) !== -1) {
                     user = issue.fields.customfield_10331; // 测试负责人
                     workload = issue.fields.customfield_10319; // 测试预估消耗
+                    deadline = issue.fields.customfield_10317; // 测试期限
                     set_user_default_data(user);
-                    update_user_data(user, workload, 'test', issue);
+                    update_user_data(user, workload, deadline, 'test', issue);
                 }
                 // 用户验收（单一组负责，工作量少可忽略）
                 if ($.inArray(issue.fields.status.name, ['待开发', '开发中', '待测试', '测试中', '待验收', '验收中']) !== -1) {
                     // user = item.fields.customfield_10332; // 验收负责人
                     // workload = item.fields.customfield_10405; // 验收预估消耗
+                    // deadline = issue.fields.customfield_10326; // 验收期限
                     // set_user_default_data(user);
-                    // update_user_data(user, workload, 'check', issue);
+                    // update_user_data(user, workload, deadline, 'check', issue);
                 }
                 // 版本发布（单一组负责，工作量少可忽略）
                 if ($.inArray(issue.fields.status.name, ['待开发', '开发中', '待测试', '测试中', '待验收', '验收中', '待发布', '发布中']) !== -1) {
-                    // user = item.fields.customfield_10333; // 验收负责人
-                    // workload = item.fields.customfield_10407; // 验收预估消耗
+                    // user = item.fields.customfield_10333; // 发布负责人
+                    // workload = item.fields.customfield_10407; // 发布预估消耗
+                    // deadline = issue.fields.customfield_10408; // 发布期限
                     // set_user_default_data(user);
-                    // update_user_data(user, workload, 'release', issue);
+                    // update_user_data(user, workload, deadline, 'release', issue);
                 }
             });
 
@@ -314,6 +396,9 @@ var CONTENT_SCRIPT = (function () {
             $.each(data, function (user_key, user_data) {
                 var link_no_workload = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20EMPTY%20)%0A)%20ORDER%20BY%20status%20DESC';
                 var link_total = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%0A)%20ORDER%20BY%20status%20DESC';
+                var link_total_last = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20%20AND%20%E7%A1%AE%E8%AE%A4%E6%9C%9F%E9%99%90%3CstartOfMonth()%20)%20%20OR%20%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E8%AE%BE%E8%AE%A1%E6%9C%9F%E9%99%90%3CstartOfMonth()%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E5%BC%80%E5%8F%91%E6%9C%9F%E9%99%90%3CstartOfMonth()%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E6%B5%8B%E8%AF%95%E6%9C%9F%E9%99%90%3CstartOfMonth()%20)%0A)%20ORDER%20BY%20status%20DESC';
+                var link_total_this = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20%20AND%20%E7%A1%AE%E8%AE%A4%E6%9C%9F%E9%99%90%3EstartOfMonth()%20AND%20%E7%A1%AE%E8%AE%A4%E6%9C%9F%E9%99%90%3CendOfMonth()%20)%20%20OR%20%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E8%AE%BE%E8%AE%A1%E6%9C%9F%E9%99%90%3EstartOfMonth()%20AND%20%E8%AE%BE%E8%AE%A1%E6%9C%9F%E9%99%90%3CendOfMonth()%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E5%BC%80%E5%8F%91%E6%9C%9F%E9%99%90%3EstartOfMonth()%20AND%20%E5%BC%80%E5%8F%91%E6%9C%9F%E9%99%90%3CendOfMonth()%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E6%B5%8B%E8%AF%95%E6%9C%9F%E9%99%90%3EstartOfMonth()%20AND%20%E6%B5%8B%E8%AF%95%E6%9C%9F%E9%99%90%3CendOfMonth()%20)%0A)%20ORDER%20BY%20status%20DESC';
+                var link_total_next = 'http://jira.51zxtx.com/issues/?filter=12603&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E7%A1%AE%E8%AE%A4%E6%9C%9F%E9%99%90%3EendOfMonth()%20)%20%20OR%20%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E8%AE%BE%E8%AE%A1%E6%9C%9F%E9%99%90%3EendOfMonth()%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E5%BC%80%E5%8F%91%E6%9C%9F%E9%99%90%3EendOfMonth()%20)%20OR%20%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD%2C%E5%BE%85%E6%B5%8B%E8%AF%95%2C%E6%B5%8B%E8%AF%95%E4%B8%AD)%20AND%20%E6%B5%8B%E8%AF%95%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E6%B5%8B%E8%AF%95%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20AND%20%E6%B5%8B%E8%AF%95%E6%9C%9F%E9%99%90%3EendOfMonth()%20)%0A)%20ORDER%20BY%20status%20DESC';
                 var link_confirm = 'http://jira.51zxtx.com/issues/?filter=12614&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E7%A1%AE%E8%AE%A4%E4%B8%AD)%20AND%20%E7%A1%AE%E8%AE%A4%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E7%A1%AE%E8%AE%A4%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20%0A)%20ORDER%20BY%20status%20DESC';
                 var link_design = 'http://jira.51zxtx.com/issues/?filter=12616&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E8%AE%BE%E8%AE%A1%E4%B8%AD)%20AND%20%E8%AE%BE%E8%AE%A1%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E8%AE%BE%E8%AE%A1%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20%0A)%20ORDER%20BY%20status%20DESC';
                 var link_develop = 'http://jira.51zxtx.com/issues/?filter=12618&jql=issuetype%20IN%20standardIssueTypes()%20AND%20(%0A%20%20%20%20(%20status%20IN(%E5%BE%85%E5%BC%80%E5%8F%91%2C%E5%BC%80%E5%8F%91%E4%B8%AD)%20AND%20%E5%BC%80%E5%8F%91%E8%B4%9F%E8%B4%A3%E4%BA%BA%3D' + user_key + '%20AND%20%E5%BC%80%E5%8F%91%E9%A2%84%E4%BC%B0%E6%B6%88%E8%80%97%20IS%20NOT%20EMPTY%20)%20%0A)%20ORDER%20BY%20status%20DESC';
@@ -337,7 +422,12 @@ var CONTENT_SCRIPT = (function () {
                     '                </div>' +
                     '                <div class="field-group">' +
                     '                    <span class="field-value">' +
-                    '                        <span><a target="_blank" href="' + link_total + '">' + user_data.have_workload.total.workload + '</a> 人天</span>' +
+                    '                        <span class="jira-toolkit-w80">' +
+                    '                            <a target="_blank" href="' + link_total + '">' + user_data.have_workload.total.workload + '</a> 人天' +
+                    '                        </span>（上月' +
+                    '                        <a target="_blank" href="' + link_total_last + '">' + user_data.have_workload.total.last_month.workload + '</a>人天 本月 ' +
+                    '                        <a target="_blank" href="' + link_total_this + '">' + user_data.have_workload.total.this_month.workload + '</a>人天 下月 ' +
+                    '                        <a target="_blank" href="' + link_total_next + '">' + user_data.have_workload.total.nex_month.workload + '</a>人天）' +
                     '                    </span>' +
                     '                    <label>所有阶段工作量总数：</label>' +
                     '                    <div class="description">&nbsp;</div>' +
